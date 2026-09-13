@@ -172,12 +172,13 @@ router.get('/me', optionalAuth, (req, res) => {
 
 // Update Profile
 router.put('/profile', authMiddleware, (req, res) => {
-  const { full_name, college, department, year_semester, bio, profile_image } = req.body;
+  const { full_name, phone, college, department, year_semester, bio, profile_image } = req.body;
   const userId = req.user.id;
 
   db.prepare(`
     UPDATE profiles
     SET full_name = COALESCE(?, full_name),
+        phone = COALESCE(?, phone),
         college = COALESCE(?, college),
         department = COALESCE(?, department),
         year_semester = COALESCE(?, year_semester),
@@ -185,7 +186,7 @@ router.put('/profile', authMiddleware, (req, res) => {
         profile_image = COALESCE(?, profile_image),
         updated_at = CURRENT_TIMESTAMP
     WHERE user_id = ?
-  `).run(full_name, college, department, year_semester, bio, profile_image, userId);
+  `).run(full_name, phone, college, department, year_semester, bio, profile_image, userId);
 
   const updatedProfile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
   res.json({ message: 'Profile updated successfully', profile: updatedProfile });

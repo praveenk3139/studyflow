@@ -31,6 +31,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER UNIQUE NOT NULL,
       full_name TEXT NOT NULL,
+      phone TEXT,
       college TEXT,
       department TEXT,
       year_semester TEXT,
@@ -540,8 +541,13 @@ function initDatabase() {
 
   db.exec(schema);
 
-  // Dynamic schema migration for fun_checkups if columns were added later
+  // Dynamic schema migration for profiles and fun_checkups if columns were added later
   try {
+    const profCols = db.prepare('PRAGMA table_info(profiles)').all().map(c => c.name);
+    if (!profCols.includes('phone')) {
+      db.prepare('ALTER TABLE profiles ADD COLUMN phone TEXT').run();
+    }
+
     const existingCols = db.prepare('PRAGMA table_info(fun_checkups)').all().map(c => c.name);
     const newCols = [
       'male_best_friend',
@@ -556,7 +562,7 @@ function initDatabase() {
       }
     }
   } catch (e) {
-    console.warn('Fun checkup schema migration check:', e.message);
+    console.warn('Schema migration check notice:', e.message);
   }
 
   seedInitialData();
@@ -580,15 +586,16 @@ function ensureAdminUser() {
       const adminId = result.lastInsertRowid;
 
       db.prepare(`
-        INSERT INTO profiles (user_id, full_name, college, department, year_semester, bio)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO profiles (user_id, full_name, phone, college, department, year_semester, bio)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         adminId,
         'Praveen Kumar',
+        '9094219300',
         'StudyFlow Admin & Academic Board',
         'Platform Administration & Learning Analytics',
         'Super Administrator',
-        'Head of Academic Analytics & Platform Administrator. Monitoring student study wellness, planner efficiency, and fun mind health.'
+        'Head of Academic Analytics & Platform Administrator. Contact: 9094219300.'
       );
 
       db.prepare(`
@@ -596,16 +603,16 @@ function ensureAdminUser() {
         VALUES (?, 'dark', 6.0, 3000, 50, 1)
       `).run(adminId);
     } else {
-      // Update password hash and role
-      db.prepare("UPDATE users SET username = 'praveen', password_hash = ?, role = 'admin' WHERE id = ?").run(adminPasswordHash, praveenUser.id);
-      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(praveenUser.id);
+      // Update password hash, email, role and phone
+      db.prepare("UPDATE users SET username = 'praveen', email = 'praveenk3139@gmail.com', password_hash = ?, role = 'admin' WHERE id = ?").run(adminPasswordHash, praveenUser.id);
+      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar', phone = '9094219300' WHERE user_id = ?").run(praveenUser.id);
     }
 
     // Also update praveen.admin if present
     let adminUser = db.prepare("SELECT * FROM users WHERE username = 'praveen.admin'").get();
     if (adminUser) {
       db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?").run(adminPasswordHash, adminUser.id);
-      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(adminUser.id);
+      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar', phone = '9094219300' WHERE user_id = ?").run(adminUser.id);
     }
   } catch (e) {
     console.warn('ensureAdminUser notice:', e.message);
