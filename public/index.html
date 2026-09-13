@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyFlow AI — Study smarter. Stay focused. Stay healthy.</title>
+  <meta name="description" content="A unified student companion combining AI-powered studying, PDF analysis, previous-year question papers, strict study plans, distraction protection, and wearable health wellness." />
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+  <!-- Authentication Portal (Login / Create New User) -->
+  <div id="auth-screen" style="display: none;"></div>
+
+  <!-- Main App Application Shell -->
+  <div id="app-container" style="display: none;">
+    <!-- Sidebar Navigation (Section 30) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">⚡</div>
+        <div class="brand-info">
+          <h1>STUDYFLOW AI</h1>
+          <p>Study • Focus • Wellness</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-section-title">Core Companion</div>
+        <a class="nav-item active" href="#dashboard">
+          <span class="nav-icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" href="#planner">
+          <span class="nav-icon">📅</span>
+          <span>Study Planner</span>
+        </a>
+        <a class="nav-item" href="#ai-agent">
+          <span class="nav-icon">🤖</span>
+          <span>AI Study Coach</span>
+        </a>
+
+        <div class="nav-section-title">Academic Labs</div>
+        <a class="nav-item" href="#pdf-lab">
+          <span class="nav-icon">📄</span>
+          <span>PDF Study Lab</span>
+        </a>
+        <a class="nav-item" href="#question-papers">
+          <span class="nav-icon">📝</span>
+          <span>Question Papers</span>
+        </a>
+        <a class="nav-item" href="#important-questions">
+          <span class="nav-icon">⭐</span>
+          <span>Important Qs</span>
+        </a>
+        <a class="nav-item" href="#tests">
+          <span class="nav-icon">🧪</span>
+          <span>Take Test</span>
+        </a>
+
+        <div class="nav-section-title">Shield & Health</div>
+        <a class="nav-item" href="#focus-shield">
+          <span class="nav-icon">🛡️</span>
+          <span>Focus Shield</span>
+        </a>
+        <a class="nav-item" href="#wellness">
+          <span class="nav-icon">❤️</span>
+          <span>Health & Wellness</span>
+        </a>
+        <a class="nav-item" href="#mind-break">
+          <span class="nav-icon">🧠</span>
+          <span>Mind Check-Up</span>
+        </a>
+        <a class="nav-item" href="#fun-checkup">
+          <span class="nav-icon">😂</span>
+          <span>Fun Check-Up</span>
+        </a>
+
+        <div class="nav-section-title">Community & Growth</div>
+        <a class="nav-item" href="#social">
+          <span class="nav-icon">👥</span>
+          <span>Friends & Chat</span>
+        </a>
+        <a class="nav-item" href="#analytics">
+          <span class="nav-icon">📊</span>
+          <span>Analytics</span>
+        </a>
+        <a class="nav-item" href="#settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a class="nav-item" id="nav-admin-link" href="#admin" style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b;">
+          <span class="nav-icon">👑</span>
+          <span style="font-weight: 700; color: #fde68a;">Admin Portal</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-mini-card">
+          <div class="user-avatar" id="header-user-avatar">A</div>
+          <div class="user-details">
+            <h4 id="header-user-name">Alex Mercer</h4>
+            <p id="header-user-sub">Student Profile</p>
+          </div>
+          <button class="btn-logout-mini" onclick="App.logout()" title="Sign Out / Switch User" aria-label="Sign Out">
+            🚪
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-wrapper">
+      <!-- Sticky Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" onclick="App.toggleMobileMenu()" aria-label="Toggle menu">☰</button>
+          
+          <!-- Active Task Status Chip -->
+          <div class="active-task-chip" onclick="window.location.hash='#planner'">
+            <div class="pulse-indicator"></div>
+            <span><strong>Active Sprint:</strong> AVL Trees (34m left)</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Stat Pills -->
+          <div class="stat-pill water" onclick="window.location.hash='#wellness'" title="Today's Hydration Target">
+            <span>💧</span>
+            <span>5 / 8</span>
+          </div>
+
+          <div class="stat-pill streak" title="Consecutive Daily Study Streak">
+            <span>🔥</span>
+            <span id="header-streak-count">7d</span>
+          </div>
+
+          <div class="stat-pill xp" title="Academic XP Points">
+            <span>🏆</span>
+            <span id="header-xp-count">1,450 XP</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <button class="icon-btn" onclick="App.openNotificationsModal()" aria-label="Notifications">
+            <span>🔔</span>
+            <div class="badge-dot"></div>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic View Container -->
+      <section class="content-area" id="view-content">
+        <!-- Rendered dynamically by view controllers -->
+      </section>
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar (Section 33) -->
+    <nav class="mobile-bottom-nav">
+      <a class="bottom-nav-item active" href="#dashboard">
+        <span>🏠</span>
+        Home
+      </a>
+      <a class="bottom-nav-item" href="#planner">
+        <span>📅</span>
+        Plan
+      </a>
+      <a class="bottom-nav-item" href="#ai-agent">
+        <span>🤖</span>
+        AI
+      </a>
+      <a class="bottom-nav-item" href="#wellness">
+        <span>❤️</span>
+        Health
+      </a>
+      <a class="bottom-nav-item" href="#focus-shield">
+        <span>🛡️</span>
+        Focus
+      </a>
+    </nav>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/views/auth.js"></script>
+  <script src="/js/views/dashboard.js"></script>
+  <script src="/js/views/funCheckup.js"></script>
+  <script src="/js/views/admin.js"></script>
+  <script src="/js/views/aiAgent.js"></script>
+  <script src="/js/views/pdfLab.js"></script>
+  <script src="/js/views/questionPapers.js"></script>
+  <script src="/js/views/importantQuestions.js"></script>
+  <script src="/js/views/tests.js"></script>
+  <script src="/js/views/planner.js"></script>
+  <script src="/js/views/focusShield.js"></script>
+  <script src="/js/views/wellness.js"></script>
+  <script src="/js/views/mindBreak.js"></script>
+  <script src="/js/views/social.js"></script>
+  <script src="/js/views/analytics.js"></script>
+  <script src="/js/views/settings.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

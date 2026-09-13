@@ -1,0 +1,8 @@
+node_modules
+.git
+.gemini
+*.log
+data/*.db-wal
+data/*.db-shm
+uploads/*
+!uploads/.gitkeep

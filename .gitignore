@@ -1,0 +1,8 @@
+node_modules
+data/
+uploads/*.pdf
+uploads/*.docx
+.env
+.env.*
+.gemini
+*.log

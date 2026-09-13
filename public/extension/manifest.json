@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "StudyFlow AI Focus Shield Companion",
+  "version": "1.0.0",
+  "description": "Companion extension for StudyFlow AI to enforce tab and distraction blocking during strict study sessions.",
+  "permissions": ["declarativeNetRequest", "storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "StudyFlow AI Focus Shield"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
