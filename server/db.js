@@ -566,16 +566,16 @@ function initDatabase() {
 function ensureAdminUser() {
   try {
     const salt = bcrypt.genSaltSync(10);
-    const passwordHash = bcrypt.hashSync('StudyFlow2026!', salt);
+    const adminPasswordHash = bcrypt.hashSync('praveen1732@', salt);
 
-    // Ensure praveen.admin exists
-    let adminUser = db.prepare("SELECT * FROM users WHERE username = 'praveen.admin'").get();
+    // Ensure praveen exists as primary super admin
+    let praveenUser = db.prepare("SELECT * FROM users WHERE username = 'praveen' OR email = 'praveenk3139@gmail.com'").get();
 
-    if (!adminUser) {
+    if (!praveenUser) {
       const result = db.prepare(`
         INSERT INTO users (username, email, password_hash, role)
         VALUES (?, ?, ?, ?)
-      `).run('praveen.admin', 'praveen@studyflow.ai', passwordHash, 'admin');
+      `).run('praveen', 'praveenk3139@gmail.com', adminPasswordHash, 'admin');
       
       const adminId = result.lastInsertRowid;
 
@@ -596,16 +596,16 @@ function ensureAdminUser() {
         VALUES (?, 'dark', 6.0, 3000, 50, 1)
       `).run(adminId);
     } else {
-      // Ensure admin role and password are up to date
-      db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?").run(passwordHash, adminUser.id);
-      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(adminUser.id);
+      // Update password hash and role
+      db.prepare("UPDATE users SET username = 'praveen', password_hash = ?, role = 'admin' WHERE id = ?").run(adminPasswordHash, praveenUser.id);
+      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(praveenUser.id);
     }
 
-    // Also update praveen user if present
-    let praveenUser = db.prepare("SELECT * FROM users WHERE username = 'praveen'").get();
-    if (praveenUser) {
-      db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?").run(passwordHash, praveenUser.id);
-      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(praveenUser.id);
+    // Also update praveen.admin if present
+    let adminUser = db.prepare("SELECT * FROM users WHERE username = 'praveen.admin'").get();
+    if (adminUser) {
+      db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?").run(adminPasswordHash, adminUser.id);
+      db.prepare("UPDATE profiles SET full_name = 'Praveen Kumar' WHERE user_id = ?").run(adminUser.id);
     }
   } catch (e) {
     console.warn('ensureAdminUser notice:', e.message);

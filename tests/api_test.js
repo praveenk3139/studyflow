@@ -248,7 +248,7 @@ async function runTests() {
     const res = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/auth/login', method: 'POST',
       headers: { 'Content-Type': 'application/json' }
-    }, { identifier: 'praveen.admin', password: 'StudyFlow2026!' });
+    }, { identifier: 'praveen', password: 'praveen1732@' });
     if (res.status !== 200 || !res.data.token || res.data.user.role !== 'admin') {
       throw new Error(`Admin login failed: ${JSON.stringify(res.data)}`);
     }

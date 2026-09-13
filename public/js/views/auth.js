@@ -145,7 +145,7 @@ const AuthView = {
                     <span class="demo-icon">👑</span>
                     <div>
                       <strong style="color: #fde68a;">Sign in as Admin (Praveen Kumar)</strong>
-                      <div class="demo-sub">User: <code>praveen.admin</code> • Role: <code>Super Administrator</code></div>
+                      <div class="demo-sub">User: <code>praveen</code> • Role: <code>Super Administrator</code></div>
                     </div>
                   </button>
 
@@ -346,8 +346,8 @@ const AuthView = {
   fillAdminCredentials() {
     const identifierInput = document.getElementById('login-identifier');
     const passwordInput = document.getElementById('login-password');
-    if (identifierInput) identifierInput.value = 'praveen.admin';
-    if (passwordInput) passwordInput.value = 'StudyFlow2026!';
+    if (identifierInput) identifierInput.value = 'praveen';
+    if (passwordInput) passwordInput.value = 'praveen1732@';
     this.showAlert('Admin credentials filled (Praveen Kumar)! Click "Sign In" or press Enter.', 'info');
   },
 
