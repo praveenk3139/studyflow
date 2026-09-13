@@ -191,17 +191,28 @@ router.put('/profile', authMiddleware, (req, res) => {
   res.json({ message: 'Profile updated successfully', profile: updatedProfile });
 });
 
-// Password reset simulation
-router.post('/forgot-password', (req, res) => {
-  const { email } = req.body;
-  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (!user) {
-    return res.status(404).json({ error: 'No account registered with this email address' });
+// Change Password endpoint
+router.put('/change-password', authMiddleware, (req, res) => {
+  const { current_password, new_password } = req.body;
+  const userId = req.user.id;
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Both current password and new password are required' });
+  }
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
   }
 
-  res.json({
-    message: `Password reset instructions have been dispatched to ${email}. (Demo link: Follow instructions sent to your college inbox)`
-  });
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  if (!user || !bcrypt.compareSync(current_password, user.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const newHash = bcrypt.hashSync(new_password, salt);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, userId);
+
+  res.json({ message: 'Password updated successfully' });
 });
 
 module.exports = router;

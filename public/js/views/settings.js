@@ -197,9 +197,36 @@ const SettingsView = {
                 🗑️ Permanently Delete All Health & Wearable Data
               </button>
             </div>
+          <!-- 5. Account Password & Private Credentials -->
+          <div class="card" style="border-top: 3px solid var(--accent-amber);">
+            <div class="card-header">
+              <div class="card-title">
+                <span>🔑</span> Change Password & Account Security
+              </div>
+              <span class="badge badge-high">Private & Encrypted</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+              Keep your administrator or student credentials completely private. You can update your account password securely at any time.
+            </p>
+
+            <div class="grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Current Password</label>
+                <input type="password" id="set-cur-pw" class="input" placeholder="••••••••" />
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">New Password</label>
+                <input type="password" id="set-new-pw" class="input" placeholder="Min 6 characters" />
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Confirm New Password</label>
+                <input type="password" id="set-conf-pw" class="input" placeholder="Re-enter new password" />
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="SettingsView.changePassword()">Update Account Password</button>
           </div>
 
-          <!-- 5. Active Session & Account Switch -->
+          <!-- 6. Active Session & Account Switch -->
           <div class="card" style="border-top: 3px solid var(--accent-cyan);">
             <div class="card-header">
               <div class="card-title">
@@ -261,6 +288,40 @@ const SettingsView = {
       });
       showToast('AI Provider preferences securely stored', 'success');
     } catch (e) {}
+  },
+
+  async changePassword() {
+    const curPw = document.getElementById('set-cur-pw')?.value;
+    const newPw = document.getElementById('set-new-pw')?.value;
+    const confPw = document.getElementById('set-conf-pw')?.value;
+
+    if (!curPw || !newPw || !confPw) {
+      showToast('Please fill in all password fields', 'warning');
+      return;
+    }
+
+    if (newPw !== confPw) {
+      showToast('New password and confirmation do not match', 'error');
+      return;
+    }
+
+    if (newPw.length < 6) {
+      showToast('New password must be at least 6 characters', 'warning');
+      return;
+    }
+
+    try {
+      const res = await api.put('/auth/change-password', {
+        current_password: curPw,
+        new_password: newPw
+      });
+      showToast(res.message || 'Password changed successfully!', 'success');
+      document.getElementById('set-cur-pw').value = '';
+      document.getElementById('set-new-pw').value = '';
+      document.getElementById('set-conf-pw').value = '';
+    } catch (e) {
+      showToast(e.message || 'Password update failed', 'error');
+    }
   },
 
   async deleteHealthData() {

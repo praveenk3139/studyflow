@@ -134,29 +134,6 @@ const AuthView = {
                     <span class="btn-icon">➔</span>
                   </button>
                 </form>
-
-                <!-- Demo Account Quick Fill Helper -->
-                <div class="auth-divider">
-                  <span>OR 1-CLICK QUICK ACCESS</span>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  <button type="button" class="btn-demo-account" onclick="AuthView.fillAdminCredentials()" style="border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.08);">
-                    <span class="demo-icon">👑</span>
-                    <div>
-                      <strong style="color: #fde68a;">Sign in as Admin (Praveen Kumar)</strong>
-                      <div class="demo-sub">User: <code>praveen</code> • Role: <code>Super Administrator</code></div>
-                    </div>
-                  </button>
-
-                  <button type="button" class="btn-demo-account" onclick="AuthView.fillDemoCredentials()">
-                    <span class="demo-icon">⚡</span>
-                    <div>
-                      <strong>Sign in as Student (Alex Mercer)</strong>
-                      <div class="demo-sub">User: <code>alex.student</code> • Pass: <code>StudyFlow2026!</code></div>
-                    </div>
-                  </button>
-                </div>
               </div>
 
               <!-- 2. SIGN UP / CREATE USER FORM -->
@@ -343,21 +320,7 @@ const AuthView = {
     }
   },
 
-  fillAdminCredentials() {
-    const identifierInput = document.getElementById('login-identifier');
-    const passwordInput = document.getElementById('login-password');
-    if (identifierInput) identifierInput.value = 'praveen';
-    if (passwordInput) passwordInput.value = 'praveen1732@';
-    this.showAlert('Admin credentials filled (Praveen Kumar)! Click "Sign In" or press Enter.', 'info');
-  },
 
-  fillDemoCredentials() {
-    const identifierInput = document.getElementById('login-identifier');
-    const passwordInput = document.getElementById('login-password');
-    if (identifierInput) identifierInput.value = 'alex.student';
-    if (passwordInput) passwordInput.value = 'StudyFlow2026!';
-    this.showAlert('Demo credentials filled! Click "Sign In" or press Enter.', 'info');
-  },
 
   showAlert(message, type = 'error') {
     const alertEl = document.getElementById('auth-alert');

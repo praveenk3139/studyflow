@@ -102,5 +102,5 @@ Visit `http://localhost:3000` or your server IP.
 
 | Account Role | Username / Identifier | Password | Access Rights |
 |---|---|---|---|
-| **Super Administrator (Praveen Kumar)** | `praveen` (or `praveen.admin`) | `praveen1732@` | Full Admin Portal, Excel Downloads, Live User Question/Answers & Academic Analytics |
-| **Demo Student (Alex Mercer)** | `alex.student` | `StudyFlow2026!` | Study Planner, PDF Lab, Focus Shield, Wellness, Fun Mind Check-Up |
+| **Super Administrator (Praveen Kumar)** | `praveen` | Configured securely in system database | Full Admin Portal, Excel Downloads, Live User Question/Answers & Academic Analytics |
+| **Demo Student (Alex Mercer)** | `alex.student` | Configured securely in system database | Study Planner, PDF Lab, Focus Shield, Wellness, Fun Mind Check-Up |
