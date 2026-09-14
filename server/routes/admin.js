@@ -3,10 +3,8 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const xlsx = require('xlsx');
 const { db } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
-const { EXCEL_FILE_PATH, getExcelSummaryData } = require('../services/excelService');
 
 // Admin Authorization Guard
 function adminGuard(req, res, next) {
@@ -22,8 +20,9 @@ function adminGuard(req, res, next) {
 router.get('/overview', authMiddleware, adminGuard, (req, res) => {
   try {
     const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const studentCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get().count;
+    const studentCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student' OR role IS NULL").get().count;
     const adminCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get().count;
+    const blockedCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_blocked = 1').get().count;
 
     const funCheckupCount = db.prepare('SELECT COUNT(*) as count FROM fun_checkups').get().count;
     
@@ -41,27 +40,13 @@ router.get('/overview', authMiddleware, adminGuard, (req, res) => {
     // Tests statistics
     const testAttempts = db.prepare('SELECT COUNT(*) as count, COALESCE(AVG(score), 82.5) as avg_score FROM test_attempts').get();
 
-    // Excel status
-    let excelStats = { file_exists: false, total_logs: 0, sheets: [] };
-    if (fs.existsSync(EXCEL_FILE_PATH)) {
-      try {
-        const wb = xlsx.readFile(EXCEL_FILE_PATH);
-        const logs = wb.Sheets['User Answers Log'] ? xlsx.utils.sheet_to_json(wb.Sheets['User Answers Log']) : [];
-        excelStats = {
-          file_exists: true,
-          file_name: 'fun_questions.xlsx',
-          total_logs: logs.length,
-          sheets: wb.SheetNames
-        };
-      } catch (e) {}
-    }
-
     res.json({
       admin_name: req.user.username === 'praveen.admin' || req.user.username === 'praveen' ? 'Praveen Kumar' : req.user.username,
       metrics: {
         total_users: totalUsers,
-        total_students: studentCount || totalUsers,
+        total_students: studentCount,
         total_admins: adminCount,
+        blocked_users: blockedCount,
         fun_checkups_completed: funCheckupCount,
         study_hours_logged: parseFloat(totalStudyHours),
         total_study_tasks: totalTasks,
@@ -71,15 +56,14 @@ router.get('/overview', authMiddleware, adminGuard, (req, res) => {
         task_completion_rate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100,
         tests_taken: testAttempts.count,
         average_test_score: Math.round(testAttempts.avg_score)
-      },
-      excel: excelStats
+      }
     });
   } catch (e) {
     res.status(500).json({ error: 'Failed to load admin overview: ' + e.message });
   }
 });
 
-// 2. Get All Users' Fun Mind Check-Up Answers
+// 2. Get All Users' Fun Mind Check-Up Answers & Scores
 router.get('/fun-checkups', authMiddleware, adminGuard, (req, res) => {
   try {
     const rows = db.prepare(`
@@ -88,6 +72,7 @@ router.get('/fun-checkups', authMiddleware, adminGuard, (req, res) => {
         u.username,
         u.email,
         u.role,
+        u.is_blocked,
         u.created_at as registered_at,
         p.full_name,
         p.college,
@@ -107,6 +92,11 @@ router.get('/fun-checkups', authMiddleware, adminGuard, (req, res) => {
         relax = r.relaxation_activities ? [r.relaxation_activities] : [];
       }
 
+      let analysisDetails = {};
+      try {
+        analysisDetails = JSON.parse(r.analysis_details || '{}');
+      } catch (e) {}
+
       return {
         id: r.id,
         user_id: r.user_id,
@@ -116,6 +106,9 @@ router.get('/fun-checkups', authMiddleware, adminGuard, (req, res) => {
         college: r.college || 'University',
         department: r.department || 'Engineering',
         year_semester: r.year_semester || 'Undergraduate',
+        score: r.score || 0,
+        grade: r.grade || 'B Tier',
+        analysis_details: analysisDetails,
         answers: {
           best_friend: r.best_friend || '—',
           makes_me_laugh: r.makes_me_laugh || '—',
@@ -156,6 +149,7 @@ router.get('/study-analytics', authMiddleware, adminGuard, (req, res) => {
         u.id,
         u.username,
         u.email,
+        u.is_blocked,
         p.full_name,
         p.college,
         p.department,
@@ -210,6 +204,7 @@ router.get('/users', authMiddleware, adminGuard, (req, res) => {
         u.username,
         u.email,
         u.role,
+        u.is_blocked,
         u.created_at,
         p.full_name,
         p.college,
@@ -228,7 +223,8 @@ router.get('/users', authMiddleware, adminGuard, (req, res) => {
       users: users.map(u => ({
         ...u,
         full_name: u.full_name || u.username,
-        is_admin: u.role === 'admin'
+        is_admin: u.role === 'admin',
+        is_blocked: u.is_blocked === 1
       }))
     });
   } catch (e) {
@@ -236,80 +232,55 @@ router.get('/users', authMiddleware, adminGuard, (req, res) => {
   }
 });
 
-// 5. Generate Master Excel Report (Downloadable by Admin)
-router.get('/master-excel', authMiddleware, adminGuard, (req, res) => {
+// 5. Block or Unblock User Account
+router.put('/users/:userId/block', authMiddleware, adminGuard, (req, res) => {
   try {
-    const summary = getExcelSummaryData();
+    const targetId = parseInt(req.params.userId);
+    const { block } = req.body; // boolean or undefined to toggle
 
-    // Create Master Administrator Workbook
-    const wb = xlsx.utils.book_new();
+    const targetUser = db.prepare('SELECT id, username, role, is_blocked FROM users WHERE id = ?').get(targetId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
 
-    // 1. Student Study Analytics Sheet
-    const studentAnalytics = db.prepare(`
-      SELECT 
-        u.id as 'User ID',
-        p.full_name as 'Student Name',
-        u.username as 'Username',
-        u.email as 'Email',
-        p.college as 'College / University',
-        p.department as 'Department',
-        (SELECT COUNT(*) FROM study_tasks WHERE user_id = u.id AND status = 'completed') as 'Completed Tasks',
-        (SELECT COUNT(*) FROM study_tasks WHERE user_id = u.id AND (status = 'missed' OR is_missed = 1)) as 'Missed Tasks',
-        (SELECT COALESCE(SUM(duration_mins), 0) / 60.0 FROM study_tasks WHERE user_id = u.id AND status = 'completed') as 'Study Hours',
-        (SELECT COUNT(*) FROM fun_checkups WHERE user_id = u.id) as 'Completed Fun Checkup',
-        (SELECT COALESCE(SUM(amount), 0) FROM xp_transactions WHERE user_id = u.id) as 'Academic XP'
-      FROM users u
-      LEFT JOIN profiles p ON u.id = p.user_id
-    `).all();
-    const wsAnalytics = xlsx.utils.json_to_sheet(studentAnalytics);
-    xlsx.utils.book_append_sheet(wb, wsAnalytics, 'Student Study Analytics');
+    if (targetUser.role === 'admin' || targetId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot block administrator account' });
+    }
 
-    // 2. All Fun Checkup Answers Sheet
-    const funRows = db.prepare(`
-      SELECT 
-        u.id as 'User ID',
-        p.full_name as 'Student Name',
-        fc.best_friend as 'Best Friend',
-        fc.male_best_friend as 'Male Best Friend',
-        fc.female_best_friend as 'Female Best Friend',
-        fc.makes_me_laugh as 'Makes Me Laugh',
-        fc.most_texted as 'Most Texted',
-        fc.bad_day_friend as 'Bad Day Friend',
-        fc.study_buddy as 'Study Buddy',
-        fc.biggest_subject_enemy as 'Biggest Subject Enemy',
-        fc.relaxation_activities as 'Relaxation Activities',
-        fc.exam_survival_friend as 'Exam Survival Friend',
-        fc.favorite_entertainment as 'Favorite Entertainment',
-        fc.nickname as 'Secret Nickname',
-        fc.funniest_college_moment as 'Funniest College Moment',
-        fc.free_day_activity as 'Free Day Activity',
-        fc.life_title_movie as 'Life Title (Movie/Anime)',
-        fc.ai_summary as 'AI Coach Summary',
-        fc.updated_at as 'Last Updated'
-      FROM fun_checkups fc
-      JOIN users u ON fc.user_id = u.id
-      LEFT JOIN profiles p ON fc.user_id = p.user_id
-    `).all();
-    const wsFun = xlsx.utils.json_to_sheet(funRows);
-    xlsx.utils.book_append_sheet(wb, wsFun, 'All Fun Check-Ups');
+    const newBlockedState = block !== undefined ? (block ? 1 : 0) : (targetUser.is_blocked ? 0 : 1);
+    db.prepare('UPDATE users SET is_blocked = ? WHERE id = ?').run(newBlockedState, targetId);
 
-    // 3. User Answers Log Sheet
-    const wsLogs = xlsx.utils.json_to_sheet(summary.user_answers_log || []);
-    xlsx.utils.book_append_sheet(wb, wsLogs, 'Live User Answers Log');
-
-    // 4. Questions Sheets
-    const wsCheckupQ = xlsx.utils.json_to_sheet(summary.checkup_questions || []);
-    xlsx.utils.book_append_sheet(wb, wsCheckupQ, 'Fun Check-Up Master Qs');
-
-    const wsAiPool = xlsx.utils.json_to_sheet(summary.ai_random_pool || []);
-    xlsx.utils.book_append_sheet(wb, wsAiPool, 'AI Random Questions Pool');
-
-    const masterFilePath = path.join(__dirname, '../../student_master_report.xlsx');
-    xlsx.writeFile(wb, masterFilePath);
-
-    res.download(masterFilePath, 'student_study_and_fun_master_report.xlsx');
+    res.json({
+      message: `User account @${targetUser.username} has been ${newBlockedState ? 'BLOCKED 🚫' : 'UNBLOCKED ✅'}.`,
+      is_blocked: newBlockedState === 1
+    });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to generate master Excel report: ' + e.message });
+    res.status(500).json({ error: 'Failed to update user block status: ' + e.message });
+  }
+});
+
+// 6. Delete Student User Account
+router.delete('/users/:userId', authMiddleware, adminGuard, (req, res) => {
+  try {
+    const targetId = parseInt(req.params.userId);
+
+    const targetUser = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(targetId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    if (targetUser.role === 'admin' || targetId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete administrator account' });
+    }
+
+    // SQLite cascade deletes associated profile, tasks, fun_checkups, etc.
+    db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
+
+    res.json({
+      message: `User account @${targetUser.username} (ID #${targetId}) permanently deleted.`
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete user account: ' + e.message });
   }
 });
 

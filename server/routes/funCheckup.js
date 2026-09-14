@@ -5,14 +5,8 @@ const fs = require('fs');
 const { db } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
 const { generateDynamicFunQuestion, callGeminiApi } = require('../services/aiService');
-const {
-  EXCEL_FILE_PATH,
-  syncFullCheckupToExcel,
-  logUserAnswerToExcel,
-  getExcelSummaryData
-} = require('../services/excelService');
 
-// Curated Random Fun Questions (Section 6)
+// Curated Random Fun Questions
 const RANDOM_QUESTIONS = [
   { id: 1, question: "If exams disappeared tomorrow, what would you do first? 😂", emoji: "🎉", placeholder: "e.g. Sleep for 48 hours straight / Book a flight to Japan" },
   { id: 2, question: "Which subject would you permanently delete from college? 🗑️", emoji: "💀", placeholder: "e.g. Advanced Calculus or Theory of Computation" },
@@ -26,6 +20,68 @@ const RANDOM_QUESTIONS = [
   { id: 10, question: "What is your most ridiculously productive time of day? ⏰", emoji: "🌙", placeholder: "e.g. 11:30 PM after 2 cups of coffee" }
 ];
 
+// Helper: Calculate Score out of 100, Grade, and Detailed Analysis
+function calculateCheckupAnalysis(data) {
+  let squadScore = 0; // max 25
+  let academicScore = 0; // max 25
+  let wellnessScore = 0; // max 25
+  let loreScore = 0; // max 25
+
+  // 1. Squad Support Alliance (25 Marks)
+  if (data.best_friend && data.best_friend !== 'Skip') squadScore += 5;
+  if (data.male_best_friend && data.male_best_friend !== 'Skip') squadScore += 5;
+  if (data.female_best_friend && data.female_best_friend !== 'Skip') squadScore += 5;
+  if (data.makes_me_laugh && data.makes_me_laugh !== 'Skip') squadScore += 5;
+  if (data.bad_day_friend && data.bad_day_friend !== 'Skip') squadScore += 5;
+
+  // 2. Academic Synergy & Battle Partner (25 Marks)
+  if (data.study_buddy && data.study_buddy !== 'Skip') academicScore += 10;
+  if (data.biggest_subject_enemy && data.biggest_subject_enemy !== 'Skip') academicScore += 8;
+  if (data.exam_survival_friend && data.exam_survival_friend !== 'Skip') academicScore += 7;
+
+  // 3. Wellness & Recharge Dynamics (25 Marks)
+  let relaxList = [];
+  try {
+    relaxList = typeof data.relaxation_activities === 'string' ? JSON.parse(data.relaxation_activities) : (data.relaxation_activities || []);
+  } catch (e) { relaxList = []; }
+  if (relaxList.length >= 3) wellnessScore += 15;
+  else if (relaxList.length >= 1) wellnessScore += 10;
+  else wellnessScore += 5;
+
+  if (data.free_day_activity && data.free_day_activity !== 'Skip') wellnessScore += 10;
+
+  // 4. Campus Lore & Creative Mindset (25 Marks)
+  if (data.nickname && data.nickname !== 'Skip' && data.nickname !== 'No nickname') loreScore += 7;
+  if (data.funniest_college_moment && data.funniest_college_moment.length > 5 && data.funniest_college_moment !== 'Skip') loreScore += 10;
+  if (data.life_title_movie && data.life_title_movie !== 'Skip') loreScore += 8;
+
+  const totalScore = Math.min(100, squadScore + academicScore + wellnessScore + loreScore);
+
+  let grade = 'B Tier';
+  if (totalScore >= 90) grade = 'S+ Tier (100% Squad & Mindset Mastery)';
+  else if (totalScore >= 80) grade = 'A+ Tier (Elite Balance & Squad Synergy)';
+  else if (totalScore >= 70) grade = 'A Tier (Strong Focus & Mindful Recharge)';
+  else if (totalScore >= 60) grade = 'B Tier (Solid Academic Foundation)';
+  else grade = 'C Tier (Developing Squad Lore)';
+
+  const details = {
+    total_score: totalScore,
+    grade: grade,
+    breakdown: {
+      squad_support: { mark: squadScore, max: 25, label: 'Squad Support Alliance' },
+      academic_synergy: { mark: academicScore, max: 25, label: 'Academic Battle Partner' },
+      wellness_recharge: { mark: wellnessScore, max: 25, label: 'Wellness & Recharge' },
+      campus_lore: { mark: loreScore, max: 25, label: 'Campus Lore & Creative Mindset' }
+    }
+  };
+
+  return {
+    score: totalScore,
+    grade: grade,
+    analysis_details: JSON.stringify(details)
+  };
+}
+
 // Helper: Generate playful AI commentary on answers
 function generateFunSummary(data) {
   const parts = [];
@@ -35,7 +91,6 @@ function generateFunSummary(data) {
   const femaleFriend = data.female_best_friend && data.female_best_friend !== 'Skip' ? data.female_best_friend : null;
   const buddy = data.study_buddy && data.study_buddy !== 'Skip' && data.study_buddy !== 'Nobody 😭' ? data.study_buddy : null;
   const enemy = data.biggest_subject_enemy && data.biggest_subject_enemy !== 'None 😎' && data.biggest_subject_enemy !== 'Skip' ? data.biggest_subject_enemy : null;
-  const laugh = data.makes_me_laugh && data.makes_me_laugh !== 'Skip' ? data.makes_me_laugh : null;
   const nick = data.nickname && data.nickname !== 'Skip' && data.nickname !== 'No nickname' ? data.nickname : null;
   const funnyMoment = data.funniest_college_moment && data.funniest_college_moment !== 'Skip' ? data.funniest_college_moment : null;
   const freeDay = data.free_day_activity && data.free_day_activity !== 'Skip' ? data.free_day_activity : null;
@@ -88,7 +143,7 @@ function generateFunSummary(data) {
   return parts.join(' ');
 }
 
-// 1. Get user's Fun Mind Check-Up data
+// 1. Get user's Fun Mind Check-Up data & Score Analysis
 router.get('/', authMiddleware, (req, res) => {
   const userId = req.user.id;
 
@@ -108,16 +163,22 @@ router.get('/', authMiddleware, (req, res) => {
     relaxation = checkup.relaxation_activities ? [checkup.relaxation_activities] : [];
   }
 
+  let analysisDetails = null;
+  try {
+    analysisDetails = JSON.parse(checkup.analysis_details || '{}');
+  } catch (e) {}
+
   res.json({
     has_completed: true,
     checkup: {
       ...checkup,
-      relaxation_activities: relaxation
+      relaxation_activities: relaxation,
+      analysis_details: analysisDetails
     }
   });
 });
 
-// 2. Submit or update Fun Mind Check-Up (Syncs to fun_questions.xlsx)
+// 2. Submit or update Fun Mind Check-Up & Evaluate Score Mark
 router.post('/', authMiddleware, (req, res) => {
   const userId = req.user.id;
   const {
@@ -160,6 +221,24 @@ router.post('/', authMiddleware, (req, res) => {
     life_title_movie
   });
 
+  const evaluation = calculateCheckupAnalysis({
+    best_friend,
+    makes_me_laugh,
+    most_texted,
+    bad_day_friend,
+    study_buddy,
+    biggest_subject_enemy,
+    relaxation_activities: relaxJson,
+    exam_survival_friend,
+    favorite_entertainment,
+    nickname,
+    male_best_friend,
+    female_best_friend,
+    funniest_college_moment,
+    free_day_activity,
+    life_title_movie
+  });
+
   const existing = db.prepare('SELECT id FROM fun_checkups WHERE user_id = ?').get(userId);
 
   if (existing) {
@@ -181,6 +260,9 @@ router.post('/', authMiddleware, (req, res) => {
           free_day_activity = ?,
           life_title_movie = ?,
           ai_summary = ?,
+          score = ?,
+          grade = ?,
+          analysis_details = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE user_id = ?
     `).run(
@@ -200,6 +282,9 @@ router.post('/', authMiddleware, (req, res) => {
       free_day_activity || '',
       life_title_movie || '',
       aiSummary,
+      evaluation.score,
+      evaluation.grade,
+      evaluation.analysis_details,
       userId
     );
   } else {
@@ -207,8 +292,9 @@ router.post('/', authMiddleware, (req, res) => {
       INSERT INTO fun_checkups (
         user_id, best_friend, makes_me_laugh, most_texted, bad_day_friend, study_buddy,
         biggest_subject_enemy, relaxation_activities, exam_survival_friend, favorite_entertainment, nickname,
-        male_best_friend, female_best_friend, funniest_college_moment, free_day_activity, life_title_movie, ai_summary
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        male_best_friend, female_best_friend, funniest_college_moment, free_day_activity, life_title_movie,
+        ai_summary, score, grade, analysis_details
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       userId,
       best_friend || '',
@@ -226,7 +312,10 @@ router.post('/', authMiddleware, (req, res) => {
       funniest_college_moment || '',
       free_day_activity || '',
       life_title_movie || '',
-      aiSummary
+      aiSummary,
+      evaluation.score,
+      evaluation.grade,
+      evaluation.analysis_details
     );
 
     // Give XP bonus for mindful break completion (+50 XP)
@@ -238,28 +327,26 @@ router.post('/', authMiddleware, (req, res) => {
     } catch (e) {}
   }
 
-  // Sync to Excel Sheet (fun_questions.xlsx)
-  try {
-    syncFullCheckupToExcel(userId, req.body, aiSummary);
-  } catch (err) {
-    console.warn('Excel checkup sync warning:', err.message);
-  }
-
   const updated = db.prepare('SELECT * FROM fun_checkups WHERE user_id = ?').get(userId);
   let parsedRelax = [];
   try { parsedRelax = JSON.parse(updated.relaxation_activities || '[]'); } catch (e) {}
+  let parsedAnalysis = {};
+  try { parsedAnalysis = JSON.parse(updated.analysis_details || '{}'); } catch (e) {}
 
   res.json({
-    message: '🎉 Fun Mind Check-Up completed successfully!',
+    message: '🎉 Fun Mind Check-Up completed & analyzed successfully!',
     checkup: {
       ...updated,
-      relaxation_activities: parsedRelax
+      relaxation_activities: parsedRelax,
+      analysis_details: parsedAnalysis
     },
-    ai_summary: aiSummary
+    ai_summary: aiSummary,
+    score: evaluation.score,
+    grade: evaluation.grade
   });
 });
 
-// 3. Delete individual answer field (Privacy requirement Section 7)
+// 3. Delete individual answer field
 router.delete('/field/:fieldName', authMiddleware, (req, res) => {
   const userId = req.user.id;
   const { fieldName } = req.params;
@@ -280,14 +367,14 @@ router.delete('/field/:fieldName', authMiddleware, (req, res) => {
   res.json({ message: `Field '${fieldName}' cleared successfully` });
 });
 
-// 4. Delete all Fun Mind Check-Up data (Privacy requirement Section 7)
+// 4. Delete all Fun Mind Check-Up data
 router.delete('/', authMiddleware, (req, res) => {
   const userId = req.user.id;
   db.prepare('DELETE FROM fun_checkups WHERE user_id = ?').run(userId);
   res.json({ message: 'All Fun Check-Up data permanently deleted.' });
 });
 
-// 5. Random Fun Question Generator (Section 6 & Dynamic AI)
+// 5. Random Fun Question Generator
 router.get('/random-question', async (req, res) => {
   try {
     const q = await generateDynamicFunQuestion();
@@ -302,7 +389,7 @@ router.get('/random-question', async (req, res) => {
   }
 });
 
-// 6. Interactive AI Reaction to Fun Question (Logs to fun_questions.xlsx)
+// 6. Interactive AI Reaction to Fun Question
 router.post('/react', authMiddleware, async (req, res) => {
   const { question, answer } = req.body;
   if (!answer) {
@@ -311,7 +398,6 @@ router.post('/react', authMiddleware, async (req, res) => {
 
   let finalReaction = null;
 
-  // Try live AI reaction with student coaching personality
   try {
     const prompt = `A university student answered this fun check-up question: "${question}".\nStudent's Answer: "${answer}".\nGive a super short (1-2 sentences), hilarious, positive, lighthearted student-friendly reaction with emojis. Strictly non-romantic.`;
     const aiReaction = await callGeminiApi(prompt, 'gemini-1.5-flash');
@@ -336,50 +422,7 @@ router.post('/react', authMiddleware, async (req, res) => {
     finalReaction = reaction;
   }
 
-  // Log answer to Excel sheet User Answers Log
-  try {
-    const userRow = db.prepare('SELECT u.username, p.full_name FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?').get(req.user.id);
-    const studentName = userRow ? (userRow.full_name || userRow.username) : req.user.username;
-    logUserAnswerToExcel({
-      userId: req.user.id,
-      username: req.user.username,
-      fullName: studentName,
-      type: 'AI Random Question',
-      question: question,
-      answer: answer,
-      reaction: finalReaction
-    });
-  } catch (err) {
-    console.warn('Excel reaction log error:', err.message);
-  }
-
   res.json({ reaction: finalReaction });
 });
 
-// 7. Get Live Excel Sheet Data (For live table dashboard in UI)
-router.get('/excel-data', authMiddleware, (req, res) => {
-  try {
-    const data = getExcelSummaryData();
-    res.json({
-      success: true,
-      data
-    });
-  } catch (e) {
-    res.status(500).json({ error: 'Could not load Excel data: ' + e.message });
-  }
-});
-
-// 8. Download Excel File (fun_questions.xlsx)
-router.get('/download-excel', authMiddleware, (req, res) => {
-  try {
-    if (!fs.existsSync(EXCEL_FILE_PATH)) {
-      getExcelSummaryData(); // Recreates if missing
-    }
-    res.download(EXCEL_FILE_PATH, 'fun_questions.xlsx');
-  } catch (e) {
-    res.status(500).json({ error: 'Could not download Excel file' });
-  }
-});
-
 module.exports = router;
-

@@ -123,6 +123,10 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials. User not found.' });
   }
 
+  if (user.is_blocked) {
+    return res.status(403).json({ error: 'Access denied: Your account has been blocked by Administrator.' });
+  }
+
   const isMatch = bcrypt.compareSync(password, user.password_hash);
   if (!isMatch) {
     return res.status(401).json({ error: 'Invalid credentials. Password incorrect.' });

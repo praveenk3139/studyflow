@@ -24,6 +24,7 @@ function initDatabase() {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT DEFAULT 'student',
+      is_blocked INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -533,6 +534,9 @@ function initDatabase() {
       free_day_activity TEXT,
       life_title_movie TEXT,
       ai_summary TEXT,
+      score INTEGER DEFAULT 0,
+      grade TEXT DEFAULT 'B Tier',
+      analysis_details TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -541,8 +545,13 @@ function initDatabase() {
 
   db.exec(schema);
 
-  // Dynamic schema migration for profiles and fun_checkups if columns were added later
+  // Dynamic schema migration for profiles, users, and fun_checkups if columns were added later
   try {
+    const userCols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+    if (!userCols.includes('is_blocked')) {
+      db.prepare('ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0').run();
+    }
+
     const profCols = db.prepare('PRAGMA table_info(profiles)').all().map(c => c.name);
     if (!profCols.includes('phone')) {
       db.prepare('ALTER TABLE profiles ADD COLUMN phone TEXT').run();
@@ -554,11 +563,15 @@ function initDatabase() {
       'female_best_friend',
       'funniest_college_moment',
       'free_day_activity',
-      'life_title_movie'
+      'life_title_movie',
+      'score',
+      'grade',
+      'analysis_details'
     ];
     for (const col of newCols) {
       if (!existingCols.includes(col)) {
-        db.prepare(`ALTER TABLE fun_checkups ADD COLUMN ${col} TEXT`).run();
+        const colType = col === 'score' ? 'INTEGER DEFAULT 0' : 'TEXT';
+        db.prepare(`ALTER TABLE fun_checkups ADD COLUMN ${col} ${colType}`).run();
       }
     }
   } catch (e) {

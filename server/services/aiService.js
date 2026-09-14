@@ -259,16 +259,6 @@ async function generateDynamicFunQuestion() {
     }
   } catch (e) {}
 
-  // Load from Excel Sheet Pool (fun_questions.xlsx)
-  try {
-    const { getRandomQuestionsFromExcel } = require('./excelService');
-    const excelPool = getRandomQuestionsFromExcel();
-    if (excelPool && excelPool.length > 0) {
-      const idx = Math.floor(Math.random() * excelPool.length);
-      return excelPool[idx];
-    }
-  } catch (e) {}
-
   // Curated fallback pool
   const fallbackQuestions = [
     { question: "If exams disappeared tomorrow, what would you do first? 😂", emoji: "🎉", placeholder: "e.g. Sleep for 48 hours straight / Book a flight to Japan", provider: "Built-in Study Coach" },

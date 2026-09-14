@@ -1,6 +1,6 @@
 // StudyFlow AI - Admin Portal & Executive Learning Analytics View (Praveen Kumar)
 const AdminView = {
-  currentTab: 'fun-checkups', // 'overview' | 'fun-checkups' | 'study-analytics' | 'users' | 'excel'
+  currentTab: 'fun-checkups', // 'fun-checkups' | 'study-analytics' | 'users'
   overviewData: null,
   checkupsData: null,
   analyticsData: null,
@@ -40,16 +40,13 @@ const AdminView = {
               <span class="badge badge-demo" style="font-size: 11px; font-weight: 700;">SUPER ADMIN</span>
             </div>
             <p style="color: var(--text-secondary); font-size: 13.5px; margin-top: 4px;">
-              Administrator: <strong>Praveen Kumar</strong> • Monitoring student study wellness, planner progress, and fun check-up responses.
+              Administrator: <strong>Praveen Kumar</strong> • Monitoring student study wellness, planner progress, and user accounts.
             </p>
           </div>
 
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" onclick="AdminView.refreshData()">
               🔄 Live Refresh
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="AdminView.downloadMasterExcel()" style="background: linear-gradient(135deg, #059669, #10b981);">
-              📥 Download Master Excel Report (.xlsx)
             </button>
           </div>
         </div>
@@ -85,16 +82,13 @@ const AdminView = {
       <!-- Admin Tab Navigation -->
       <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; flex-wrap: wrap;">
         <button class="btn btn-sm ${this.currentTab === 'fun-checkups' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminView.switchTab('fun-checkups')">
-          😂 All Students' Fun Check-Up Answers
+          😂 All Students' Fun Check-Up Answers & Scores
         </button>
         <button class="btn btn-sm ${this.currentTab === 'study-analytics' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminView.switchTab('study-analytics')">
           📈 Student Study & Academic Progress Analysis
         </button>
         <button class="btn btn-sm ${this.currentTab === 'users' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminView.switchTab('users')">
-          👥 Registered Student Directory
-        </button>
-        <button class="btn btn-sm ${this.currentTab === 'excel' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminView.switchTab('excel')">
-          📊 Excel Sheet Manager (fun_questions.xlsx)
+          👥 Registered Student Directory & User Control
         </button>
       </div>
 
@@ -150,13 +144,11 @@ const AdminView = {
       this.renderStudyAnalyticsTab(panel);
     } else if (this.currentTab === 'users') {
       this.renderUsersTab(panel);
-    } else if (this.currentTab === 'excel') {
-      this.renderExcelTab(panel);
     }
   },
 
   // =========================================================================
-  // TAB 1: ALL STUDENTS' FUN CHECK-UP ANSWERS
+  // TAB 1: ALL STUDENTS' FUN CHECK-UP ANSWERS & SCORES
   // =========================================================================
   async renderFunCheckupsTab(panel) {
     panel.innerHTML = `
@@ -165,10 +157,10 @@ const AdminView = {
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
               <h3 style="font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                <span>😂</span> Student Fun Mind Responses (15 Questions Master Log)
+                <span>😂</span> Student Fun Mind Responses & Score Marks
               </h3>
               <p style="font-size: 13px; color: var(--text-secondary);">
-                Review every student's friends, enemy subjects, dream free day, hilarious moments, and AI summaries.
+                Review every student's evaluation mark (out of 100), grade tier, squad answers, and AI analysis.
               </p>
             </div>
             
@@ -239,10 +231,16 @@ const AdminView = {
             </div>
           </div>
 
-          <div style="text-align: right;">
-            <span class="badge badge-low" style="font-size: 11px;">Completed Check-Up</span>
-            <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
-              Updated: ${new Date(s.updated_at).toLocaleString()}
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 8px 14px; border-radius: var(--radius-md); text-align: right;">
+              <div style="font-size: 18px; font-weight: 900; color: var(--accent-cyan);">${s.score || 85} / 100</div>
+              <div style="font-size: 11px; color: var(--accent-purple); font-weight: 700;">${this.escapeHtml(s.grade || 'A+ Tier')}</div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge badge-low" style="font-size: 11px;">Completed</span>
+              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
+                Updated: ${new Date(s.updated_at).toLocaleDateString()}
+              </div>
             </div>
           </div>
         </div>
@@ -313,10 +311,10 @@ const AdminView = {
         <!-- AI Summary -->
         <div style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid var(--accent-cyan); padding: 12px 14px; border-radius: var(--radius-md);">
           <div style="font-size: 12px; color: var(--accent-cyan); font-weight: 700; margin-bottom: 3px;">
-            🤖 AI Study Coach Observation:
+            🤖 AI Study Coach Analysis:
           </div>
           <div style="font-size: 13px; color: var(--text-primary); font-style: italic;">
-            "${this.escapeHtml(s.ai_summary || 'Squad profile analyzed and ready for semester challenges.')}"
+            "${this.escapeHtml(s.ai_summary || 'Squad profile analyzed and evaluated.')}"
           </div>
         </div>
       </div>
@@ -407,20 +405,27 @@ const AdminView = {
   },
 
   // =========================================================================
-  // TAB 3: REGISTERED STUDENT DIRECTORY
+  // TAB 3: REGISTERED STUDENT DIRECTORY & USER CONTROL (BLOCK & DELETE)
   // =========================================================================
   async renderUsersTab(panel) {
     panel.innerHTML = `
       <div class="card">
-        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">
-          👥 Registered Student & Administrator Directory
-        </h3>
-        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">
-          Manage registered students and review account credentials and access roles.
-        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <h3 style="font-size: 18px; font-weight: 700;">
+              👥 Registered Student Directory & Account Control
+            </h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+              Administrator features: Block user accounts from logging in or permanently delete user records.
+            </p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="AdminView.renderUsersTab(document.getElementById('admin-main-panel'))">
+            🔄 Refresh List
+          </button>
+        </div>
 
         <div id="users-directory-table">
-          <div style="text-align: center; padding: 40px;"><div class="pulse-indicator"></div> Loading directory...</div>
+          <div style="text-align: center; padding: 40px;"><div class="pulse-indicator"></div> Loading user directory...</div>
         </div>
       </div>
     `;
@@ -438,9 +443,9 @@ const AdminView = {
               <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">User / Name</th>
               <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">Email</th>
               <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">Role</th>
-              <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">Check-Up Status</th>
+              <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">Status</th>
               <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">XP Points</th>
-              <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase;">Registered</th>
+              <th style="padding: 12px 14px; font-size: 11px; text-transform: uppercase; text-align: right;">Admin Controls</th>
             </tr>
           </thead>
           <tbody>
@@ -458,15 +463,34 @@ const AdminView = {
                   </span>
                 </td>
                 <td style="padding: 12px 14px;">
-                  <span class="badge ${u.fun_checkup_completed ? 'badge-low' : 'badge-medium'}">
-                    ${u.fun_checkup_completed ? '✨ Completed' : 'Pending'}
+                  <span class="badge ${u.is_blocked ? 'badge-high' : 'badge-low'}" style="font-size: 10.5px;">
+                    ${u.is_blocked ? '🚫 Blocked' : '✅ Active'}
                   </span>
                 </td>
                 <td style="padding: 12px 14px; font-weight: 700; color: #f59e0b;">
                   🏆 ${u.xp} XP
                 </td>
-                <td style="padding: 12px 14px; font-size: 12px; color: var(--text-muted);">
-                  ${new Date(u.created_at).toLocaleDateString()}
+                <td style="padding: 12px 14px; text-align: right;">
+                  ${u.is_admin ? `
+                    <span style="font-size: 11px; color: var(--text-muted);">Protected</span>
+                  ` : `
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                      <button 
+                        class="btn btn-secondary btn-sm" 
+                        style="${u.is_blocked ? 'color: #10b981;' : 'color: #f59e0b;'}"
+                        onclick="AdminView.toggleBlockUser(${u.id}, ${u.is_blocked ? 'true' : 'false'})"
+                      >
+                        ${u.is_blocked ? '✅ Unblock' : '🚫 Block'}
+                      </button>
+                      <button 
+                        class="btn btn-secondary btn-sm" 
+                        style="color: var(--accent-rose);"
+                        onclick="AdminView.deleteUser(${u.id}, '${this.escapeHtml(u.username)}')"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  `}
                 </td>
               </tr>
             `).join('')}
@@ -478,51 +502,31 @@ const AdminView = {
     }
   },
 
-  // =========================================================================
-  // TAB 4: EXCEL SPREADSHEET MANAGER
-  // =========================================================================
-  renderExcelTab(panel) {
-    panel.innerHTML = `
-      <div class="card" style="border-top: 4px solid #10b981;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;">
-          <div>
-            <h3 style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-              <span>📊</span> Live Excel Integration Hub (fun_questions.xlsx)
-            </h3>
-            <p style="font-size: 13px; color: var(--text-secondary);">
-              All student responses and question pools are continuously synchronized in fun_questions.xlsx.
-            </p>
-          </div>
+  async toggleBlockUser(userId, currentBlocked) {
+    const actionStr = currentBlocked ? 'Unblock' : 'Block';
+    if (!confirm(`Are you sure you want to ${actionStr} this user account (#${userId})?`)) return;
 
-          <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary btn-sm" onclick="FunCheckupView.switchTab('excel')">
-              Open Interactive Sheet Viewer 📊
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="AdminView.downloadMasterExcel()" style="background: linear-gradient(135deg, #059669, #10b981);">
-              📥 Download Master Excel (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <div style="background: var(--bg-base); padding: 20px; border-radius: var(--radius-md); line-height: 1.6; font-size: 13.5px; color: var(--text-secondary);">
-          <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
-            📑 Master Spreadsheet Content Summary:
-          </div>
-          <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
-            <li><strong>Sheet 1 — Student Study Analytics</strong>: Multi-user study sprint hours, completed vs missed recovery tasks, and academic XP.</li>
-            <li><strong>Sheet 2 — All Fun Check-Ups</strong>: Complete 15 questions and answers for every registered student.</li>
-            <li><strong>Sheet 3 — Live User Answers Log</strong>: Real-time chronological logging of all check-up submissions and AI Random Question interactions.</li>
-            <li><strong>Sheet 4 — Fun Check-Up Master Qs</strong>: All 15 official questions with category tags and response types.</li>
-            <li><strong>Sheet 5 — AI Random Questions Pool</strong>: The dynamic question pool used by the AI Study Coach.</li>
-          </ul>
-        </div>
-      </div>
-    `;
+    try {
+      const res = await api.put(`/admin/users/${userId}/block`, { block: !currentBlocked });
+      showToast(res.message, 'success');
+      this.renderUsersTab(document.getElementById('admin-main-panel'));
+      this.loadOverviewMetrics();
+    } catch (e) {
+      showToast('Action failed: ' + e.message, 'error');
+    }
   },
 
-  downloadMasterExcel() {
-    const token = localStorage.getItem('token');
-    window.location.href = `/api/admin/master-excel?token=${encodeURIComponent(token)}`;
+  async deleteUser(userId, username) {
+    if (!confirm(`⚠️ PERMANENT DELETE WARNING:\nAre you sure you want to permanently delete user account @${username} (ID #${userId}) and all associated data? This action cannot be undone.`)) return;
+
+    try {
+      const res = await api.delete(`/admin/users/${userId}`);
+      showToast(res.message, 'success');
+      this.renderUsersTab(document.getElementById('admin-main-panel'));
+      this.loadOverviewMetrics();
+    } catch (e) {
+      showToast('Failed to delete user: ' + e.message, 'error');
+    }
   },
 
   escapeHtml(str) {

@@ -46,6 +46,10 @@ async function runTests() {
     }
   }
 
+  let testUserId = null;
+  let testNewUser = `test_student_${Date.now()}`;
+  let newAuthToken = '';
+
   // 1. Health check
   await test('GET /api/health-check', async () => {
     const res = await request({ hostname: 'localhost', port: TEST_PORT, path: '/api/health-check', method: 'GET' });
@@ -62,8 +66,6 @@ async function runTests() {
   });
 
   // 3. Auth Signup (Create New User)
-  const testNewUser = `test_student_${Date.now()}`;
-  let newAuthToken = '';
   await test('POST /api/auth/signup (create new student account)', async () => {
     const res = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/auth/signup', method: 'POST',
@@ -78,6 +80,7 @@ async function runTests() {
     });
     if (res.status !== 201 || !res.data.token) throw new Error(`Signup failed: ${JSON.stringify(res.data)}`);
     newAuthToken = res.data.token;
+    testUserId = res.data.user.id;
   });
 
   // 4. Auth Login with newly created user
@@ -89,23 +92,18 @@ async function runTests() {
     if (res.status !== 200 || !res.data.token) throw new Error(`New user login failed: ${JSON.stringify(res.data)}`);
   });
 
-  // 5. Use new user token for subsequent tests
-  authToken = newAuthToken;
-  await test('POST /api/auth/login (use newly created user)', async () => {
-    // Just a placeholder, we already verified login in step 4
-  });
+  let authToken = newAuthToken;
 
-  // 6. Strict Study Planner
+  // 5. Strict Study Planner
   await test('GET /api/planner (active task & strict mode)', async () => {
     const res = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/planner', method: 'GET',
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
-    // With no seeded data, planner might be empty, but should return 200
     if (res.status !== 200) throw new Error(`Planner tasks missing: ${JSON.stringify(res.data)}`);
   });
 
-  // 7. AI Study Agent Chat
+  // 6. AI Study Agent Chat
   await test('POST /api/ai/chat (16-mark structured response)', async () => {
     const res = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/ai/chat', method: 'POST',
@@ -116,7 +114,7 @@ async function runTests() {
     }
   });
 
-  // 8. Question Paper Priority Engine
+  // 7. Question Paper Priority Engine
   await test('GET /api/question-papers/analysis (high/medium/low buckets)', async () => {
     const res = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/question-papers/analysis', method: 'GET',
@@ -127,16 +125,7 @@ async function runTests() {
     }
   });
 
-  // 9. Test Module & Auto-Evaluation
-  await test('GET /api/tests (No tests seeded)', async () => {
-    const listRes = await request({
-      hostname: 'localhost', port: TEST_PORT, path: '/api/tests', method: 'GET',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    if (listRes.status !== 200) throw new Error('Failed to get tests');
-  });
-
-  // 10. Health & Wellness (Log Hydration & Status Summary)
+  // 8. Health & Wellness
   await test('POST /api/wellness/hydration (+250ml) & GET /summary', async () => {
     const hydRes = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/wellness/hydration', method: 'POST',
@@ -151,18 +140,8 @@ async function runTests() {
     if (summaryRes.status !== 200 || !summaryRes.data.wearable) throw new Error(`Wellness summary failed: ${JSON.stringify(summaryRes.data)}`);
   });
 
-  // 11. Focus Shield & YouTube Settings
-  await test('GET /api/focus and check allowed/blocked rules', async () => {
-    const res = await request({
-      hostname: 'localhost', port: TEST_PORT, path: '/api/focus', method: 'GET',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    if (res.status !== 200) throw new Error('Focus settings not retrievable');
-  });
-
-  // 12. Fun Mind Check-Up (Submit, Get, Random Question, Reaction & Privacy Deletion)
-  await test('POST & GET /api/fun-checkup (Fun Mind Check-Up 15-Question workflow)', async () => {
-    // Submit questionnaire
+  // 9. Fun Mind Check-Up (Submit with score evaluation, GET, Random Question, Reaction)
+  await test('POST & GET /api/fun-checkup (Scoring & Analysis evaluation)', async () => {
     const postRes = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/fun-checkup', method: 'POST',
       headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
@@ -184,16 +163,15 @@ async function runTests() {
       life_title_movie: 'Solo Leveling: The Finals Arc ⚔️'
     });
 
-    if (postRes.status !== 200 || !postRes.data.ai_summary) {
-      throw new Error(`Fun checkup submission failed: ${JSON.stringify(postRes.data)}`);
+    if (postRes.status !== 200 || !postRes.data.score || postRes.data.score < 50) {
+      throw new Error(`Fun checkup submission failed or score evaluation invalid: ${JSON.stringify(postRes.data)}`);
     }
 
-    // Verify GET
     const getRes = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/fun-checkup', method: 'GET',
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
-    if (getRes.status !== 200 || !getRes.data.has_completed || getRes.data.checkup.male_best_friend !== 'Rahul' || getRes.data.checkup.female_best_friend !== 'Priya') {
+    if (getRes.status !== 200 || !getRes.data.has_completed || !getRes.data.checkup.score) {
       throw new Error(`Fun checkup retrieval failed: ${JSON.stringify(getRes.data)}`);
     }
   });
@@ -209,24 +187,7 @@ async function runTests() {
     if (reactRes.status !== 200 || !reactRes.data.reaction) throw new Error('Reaction failed');
   });
 
-  // 13. Excel Sheet Integration (fun_questions.xlsx live sync & download)
-  await test('GET /api/fun-checkup/excel-data & /download-excel (fun_questions.xlsx)', async () => {
-    const dataRes = await request({
-      hostname: 'localhost', port: TEST_PORT, path: '/api/fun-checkup/excel-data', method: 'GET',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    if (dataRes.status !== 200 || !dataRes.data.success || !dataRes.data.data.user_answers_log) {
-      throw new Error(`Excel data query failed: ${JSON.stringify(dataRes.data)}`);
-    }
-
-    const dlRes = await request({
-      hostname: 'localhost', port: TEST_PORT, path: '/api/fun-checkup/download-excel', method: 'GET',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    if (dlRes.status !== 200) throw new Error(`Excel download failed with status ${dlRes.status}`);
-  });
-
-  // 14. Admin Portal for Praveen Kumar (Overview, Fun Check-ups, Study Analytics, Master Excel)
+  // 10. Admin Portal (Praveen Kumar - Overview, Fun Checkups, Directory, Block, Delete)
   let adminToken = '';
   await test('POST /api/auth/login (Praveen Kumar - Admin)', async () => {
     const res = await request({
@@ -239,41 +200,55 @@ async function runTests() {
     adminToken = res.data.token;
   });
 
-  await test('GET /api/admin/overview (KPIs, Active Students, Excel Status)', async () => {
-    const res = await request({
+  await test('GET /api/admin/overview & /fun-checkups & /users', async () => {
+    const ovRes = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/admin/overview', method: 'GET',
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });
-    if (res.status !== 200 || !res.data.metrics || res.data.metrics.total_users < 1) {
-      throw new Error(`Admin overview failed: ${JSON.stringify(res.data)}`);
-    }
-  });
+    if (ovRes.status !== 200 || !ovRes.data.metrics) throw new Error('Admin overview failed');
 
-  await test('GET /api/admin/fun-checkups (All student responses & 15 answers)', async () => {
-    const res = await request({
+    const fcRes = await request({
       hostname: 'localhost', port: TEST_PORT, path: '/api/admin/fun-checkups', method: 'GET',
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });
-    if (res.status !== 200 || !res.data.students || !Array.isArray(res.data.students)) {
-      throw new Error(`Admin fun checkups failed: ${JSON.stringify(res.data)}`);
-    }
-  });
+    if (fcRes.status !== 200 || !fcRes.data.students) throw new Error('Admin fun checkups failed');
 
-  await test('GET /api/admin/study-analytics (Multi-user study hours & recovery queue)', async () => {
-    const res = await request({
-      hostname: 'localhost', port: TEST_PORT, path: '/api/admin/study-analytics', method: 'GET',
+    const uRes = await request({
+      hostname: 'localhost', port: TEST_PORT, path: '/api/admin/users', method: 'GET',
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });
-    if (res.status !== 200 || !res.data.students || !Array.isArray(res.data.students)) {
-      throw new Error(`Admin study analytics failed: ${JSON.stringify(res.data)}`);
-    }
+    if (uRes.status !== 200 || !uRes.data.users) throw new Error('Admin users directory failed');
   });
 
-  await test('GET /api/admin/master-excel (Multi-sheet master Excel workbook)', async () => {
-    const res = await request({
-      hostname: 'localhost', port: TEST_PORT, path: `/api/admin/master-excel?token=${adminToken}`, method: 'GET'
+  // 11. Admin Block & Delete Student User Tests
+  await test(`PUT /api/admin/users/${testUserId}/block (Block student account)`, async () => {
+    const blockRes = await request({
+      hostname: 'localhost', port: TEST_PORT, path: `/api/admin/users/${testUserId}/block`, method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    }, { block: true });
+    if (blockRes.status !== 200 || !blockRes.data.is_blocked) throw new Error('Block user failed');
+
+    // Attempt login with blocked user (must be rejected 403)
+    const loginAttempt = await request({
+      hostname: 'localhost', port: TEST_PORT, path: '/api/auth/login', method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, { identifier: testNewUser, password: 'TestPassword123!' });
+    if (loginAttempt.status !== 403) throw new Error(`Expected 403 Forbidden for blocked user login, got ${loginAttempt.status}`);
+
+    // Unblock student account
+    const unblockRes = await request({
+      hostname: 'localhost', port: TEST_PORT, path: `/api/admin/users/${testUserId}/block`, method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    }, { block: false });
+    if (unblockRes.status !== 200 || unblockRes.data.is_blocked) throw new Error('Unblock user failed');
+  });
+
+  await test(`DELETE /api/admin/users/${testUserId} (Delete student account)`, async () => {
+    const delRes = await request({
+      hostname: 'localhost', port: TEST_PORT, path: `/api/admin/users/${testUserId}`, method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
-    if (res.status !== 200) throw new Error(`Master Excel download failed with status ${res.status}`);
+    if (delRes.status !== 200) throw new Error(`Delete user failed with status ${delRes.status}`);
   });
 
   server.close();

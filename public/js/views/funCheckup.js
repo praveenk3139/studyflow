@@ -1,6 +1,6 @@
-// StudyFlow AI - Fun Mind Check-Up, AI Random Question Hub & Excel Connection View
+// StudyFlow AI - Fun Mind Check-Up & AI Random Question Hub View
 const FunCheckupView = {
-  currentTab: 'checkup', // 'checkup' | 'random' | 'excel'
+  currentTab: 'checkup', // 'checkup' | 'random'
   currentStep: 1,
   totalSteps: 15,
   answers: {
@@ -30,11 +30,6 @@ const FunCheckupView = {
   isSubmittingModal: false,
   sessionHistory: [],
 
-  // State for Excel Sheet Viewer
-  excelData: null,
-  excelActiveSheet: 'User Answers Log', // 'User Answers Log' | 'Fun Check-Up Questions' | 'AI Random Questions Pool'
-  excelSearchQuery: '',
-
   async render() {
     const container = document.getElementById('view-content');
     if (!container) return;
@@ -43,8 +38,6 @@ const FunCheckupView = {
     const hash = window.location.hash;
     if (hash.includes('tab=random')) {
       this.currentTab = 'random';
-    } else if (hash.includes('tab=excel')) {
-      this.currentTab = 'excel';
     }
 
     container.innerHTML = `
@@ -53,24 +46,20 @@ const FunCheckupView = {
           <div>
             <h2 style="font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px;">
               <span>😂</span> Fun Mind Check-Up
-              <span class="badge badge-low" style="font-size: 11px; font-weight: 600;">⚡ AI Powered</span>
-              <span class="badge badge-demo" style="font-size: 11px;">📊 Excel Synced</span>
+              <span class="badge badge-low" style="font-size: 11px; font-weight: 600;">⚡ AI Powered Analysis</span>
             </h2>
             <p style="color: var(--text-secondary); font-size: 13.5px; margin-top: 4px;">
-              Take a quick mindful break with dynamic questions connected to <strong>fun_questions.xlsx</strong>!
+              Take a quick mindful break, earn your Mindset Score & Grade, and build your student squad lore!
             </p>
           </div>
 
-          <!-- Top Navigation Tabs (Combines Checkup, AI Hub & Excel Sheet Viewer) -->
+          <!-- Top Navigation Tabs -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <button class="fun-tab-btn ${this.currentTab === 'checkup' ? 'active' : ''}" onclick="FunCheckupView.switchTab('checkup')">
               📋 Squad Check-Up (15 Qs)
             </button>
             <button class="fun-tab-btn ${this.currentTab === 'random' ? 'active' : ''}" onclick="FunCheckupView.switchTab('random')">
               🎲 AI Random Question Hub
-            </button>
-            <button class="fun-tab-btn ${this.currentTab === 'excel' ? 'active' : ''}" onclick="FunCheckupView.switchTab('excel')">
-              📊 Excel Sheet & Live Answers Log
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#mind-break'">
               🧠 Mind Games
@@ -84,7 +73,7 @@ const FunCheckupView = {
         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 12px 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: #fde68a;">
           <span style="font-size: 18px;">⏳</span>
           <div>
-            <strong>Study Sprint Active:</strong> Your study session is currently running. You can enjoy the Fun Check-Up right now as an intentional mental break, or resume whenever you are ready!
+            <strong>Study Sprint Active:</strong> Your study session is currently running. You can enjoy the Fun Check-Up right now as an intentional mental break!
           </div>
         </div>
       </div>
@@ -104,7 +93,6 @@ const FunCheckupView = {
     document.querySelectorAll('.fun-tab-btn').forEach(btn => {
       if (btn.innerText.includes('Squad') && tab === 'checkup') btn.classList.add('active');
       else if (btn.innerText.includes('Hub') && tab === 'random') btn.classList.add('active');
-      else if (btn.innerText.includes('Excel') && tab === 'excel') btn.classList.add('active');
       else btn.classList.remove('active');
     });
     this.renderCurrentTab();
@@ -126,8 +114,6 @@ const FunCheckupView = {
 
     if (this.currentTab === 'random') {
       this.renderRandomQuestionHub(mainEl);
-    } else if (this.currentTab === 'excel') {
-      this.renderExcelSheetView(mainEl);
     } else {
       this.loadCheckup(mainEl);
     }
@@ -214,7 +200,7 @@ const FunCheckupView = {
               Skip
             </button>
             <button class="btn btn-primary" onclick="FunCheckupView.nextStep()" style="min-width: 110px;">
-              ${step === this.totalSteps ? 'Finish 🎉' : 'Next →'}
+              ${step === this.totalSteps ? 'Finish & Analyze 🎉' : 'Next →'}
             </button>
           </div>
         </div>
@@ -662,8 +648,8 @@ const FunCheckupView = {
     container.innerHTML = `
       <div class="card" style="text-align: center; padding: 60px 20px; max-width: 600px; margin: 0 auto;">
         <div class="pulse-indicator" style="margin: 0 auto 16px;"></div>
-        <h3 style="font-size: 18px; font-weight: 700;">Analyzing Your Check-Up with AI & Syncing to Excel... ⚡</h3>
-        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 6px;">Writing answers into fun_questions.xlsx spreadsheet.</p>
+        <h3 style="font-size: 18px; font-weight: 700;">Evaluating & Analyzing Check-Up Score... ⚡</h3>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 6px;">Computing squad marks and mindset tier.</p>
       </div>
     `;
 
@@ -671,7 +657,7 @@ const FunCheckupView = {
       const res = await api.post('/fun-checkup', this.answers);
       this.isEditing = false;
       this.existingData = res.checkup;
-      showToast('🎉 Fun Mind Check-Up saved & synced to Excel! (+50 XP)', 'success');
+      showToast('🎉 Fun Mind Check-Up analyzed successfully! (+50 XP)', 'success');
       playAudioChime('task_complete');
       this.renderResultCard(res.checkup, container);
     } catch (e) {
@@ -688,19 +674,80 @@ const FunCheckupView = {
       relax = [data.relaxation_activities || 'Gaming'];
     }
 
+    const score = data.score !== undefined && data.score !== null ? data.score : 85;
+    const grade = data.grade || 'A+ Tier (Elite Balance & Squad Synergy)';
+
+    let breakdown = {
+      squad_support: { mark: 22, max: 25, label: 'Squad Support Alliance' },
+      academic_synergy: { mark: 20, max: 25, label: 'Academic Battle Partner' },
+      wellness_recharge: { mark: 21, max: 25, label: 'Wellness & Recharge' },
+      campus_lore: { mark: 22, max: 25, label: 'Campus Lore & Creative Mindset' }
+    };
+
+    if (data.analysis_details) {
+      try {
+        const parsed = typeof data.analysis_details === 'string' ? JSON.parse(data.analysis_details) : data.analysis_details;
+        if (parsed.breakdown) breakdown = parsed.breakdown;
+      } catch (e) {}
+    }
+
     container.innerHTML = `
       <div style="max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; animation: authFadeIn 0.3s ease;">
         
+        <!-- Score Card Banner -->
+        <div class="card" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border-top: 4px solid var(--accent-cyan); border-radius: var(--radius-lg); padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+            <div>
+              <span class="badge badge-low" style="margin-bottom: 6px;">🎯 Official Mindset & Squad Evaluation</span>
+              <h2 style="font-size: 24px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 10px;">
+                <span>🏆</span> CHECK-UP ANALYSIS & SCORE CARD
+              </h2>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+                Evaluated across 4 core academic & wellness dimensions.
+              </p>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 14px; background: rgba(15, 23, 42, 0.6); padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="text-align: center;">
+                <div style="font-size: 32px; font-weight: 900; color: var(--accent-cyan); line-height: 1;">${score}</div>
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-top: 2px;">Score / 100</div>
+              </div>
+              <div style="height: 36px; width: 1px; background: var(--border-subtle);"></div>
+              <div>
+                <span class="badge badge-demo" style="font-size: 12px; font-weight: 700;">${this.escapeHtml(grade)}</span>
+                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">Evaluated & Recorded</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-marks Breakdown Grid -->
+          <div class="grid-2" style="gap: 14px;">
+            ${Object.keys(breakdown).map(k => {
+              const item = breakdown[k];
+              const pct = Math.round((item.mark / item.max) * 100);
+              return `
+                <div style="background: var(--bg-base); padding: 14px 16px; border-radius: var(--radius-md); border-left: 3px solid var(--accent-cyan);">
+                  <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px;">
+                    <strong style="color: var(--text-primary);">${this.escapeHtml(item.label)}</strong>
+                    <span style="font-weight: 700; color: var(--accent-cyan);">${item.mark} / ${item.max}</span>
+                  </div>
+                  <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, #38bdf8, #8b5cf6);"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
         <!-- Main Result Card -->
-        <div class="card" style="border-top: 4px solid var(--accent-cyan); position: relative; overflow: hidden;">
+        <div class="card" style="border-top: 4px solid var(--accent-purple); position: relative; overflow: hidden;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
             <div>
-              <span class="badge badge-low" style="margin-bottom: 8px;">🎉 Check-Up Complete (15 Questions)</span>
-              <span class="badge badge-demo" style="margin-bottom: 8px; margin-left: 6px;">📊 Excel Synced</span>
-              <h2 style="font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                <span>😂</span> YOUR FUN MIND PROFILE
+              <span class="badge badge-low" style="margin-bottom: 8px;">🎉 Check-Up Answers Record</span>
+              <h2 style="font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span>😂</span> YOUR SQUAD & HUMOR PROFILE
               </h2>
-              <p style="font-size: 13px; color: var(--text-secondary);">Your personal student squad, humor lore & relaxation profile.</p>
             </div>
 
             <div style="display: flex; gap: 8px;">
@@ -805,7 +852,7 @@ const FunCheckupView = {
           <div style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid var(--accent-cyan); padding: 16px 18px; border-radius: var(--radius-md); margin-bottom: 20px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
               <span style="font-size: 16px;">🤖</span>
-              <strong style="font-size: 13.5px; color: var(--accent-cyan);">AI Study Coach Observation:</strong>
+              <strong style="font-size: 13.5px; color: var(--accent-cyan);">AI Study Coach Analysis:</strong>
             </div>
             <p style="font-size: 13.5px; line-height: 1.6; color: var(--text-primary); font-style: italic;">
               "${data.ai_summary || 'Your study squad is locked in and ready for the semester!'}"
@@ -820,9 +867,6 @@ const FunCheckupView = {
             <button class="btn btn-secondary" onclick="FunCheckupView.switchTab('random')">
               🎲 Open Full Question Hub
             </button>
-            <button class="btn btn-secondary" onclick="FunCheckupView.switchTab('excel')">
-              📊 View Live Excel Sheet Log
-            </button>
           </div>
         </div>
 
@@ -833,7 +877,7 @@ const FunCheckupView = {
               <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
                 <span>✨</span> Instant AI Random Question Break
               </div>
-              <div class="card-subtitle">Roll fun questions anytime & get hilarious real-time AI coach feedback. (Logged to Excel)</div>
+              <div class="card-subtitle">Roll fun questions anytime & get hilarious real-time AI coach feedback.</div>
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-roll-embedded" onclick="FunCheckupView.rollEmbeddedRandomQuestion()">
               🎲 Roll Question
@@ -951,7 +995,7 @@ const FunCheckupView = {
   },
 
   // =========================================================================
-  // TAB 2: DEDICATED AI RANDOM QUESTION HUB (COMBINED STUDIO)
+  // TAB 2: DEDICATED AI RANDOM QUESTION HUB
   // =========================================================================
   async renderRandomQuestionHub(container) {
     container.innerHTML = `
@@ -962,19 +1006,15 @@ const FunCheckupView = {
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
             <div>
               <span class="badge badge-demo" style="margin-bottom: 6px;">⚡ Infinite Generator</span>
-              <span class="badge badge-low" style="margin-bottom: 6px; margin-left: 6px;">📊 fun_questions.xlsx Connected</span>
               <h3 style="font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
                 <span>🎲</span> AI Random Question Hub
               </h3>
               <p style="font-size: 13px; color: var(--text-secondary);">
-                Questions dynamically fetched from Excel & enhanced by Gemini 1.5 Flash + Ollama Qwen3!
+                Dynamic questions enhanced by Gemini 1.5 Flash + Ollama Qwen3!
               </p>
             </div>
             
             <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" onclick="FunCheckupView.switchTab('excel')">
-                📊 View Excel Log
-              </button>
               <button class="btn btn-secondary btn-sm" id="btn-hub-roll" onclick="FunCheckupView.rollHubQuestion()">
                 🎲 Roll Another
               </button>
@@ -984,7 +1024,7 @@ const FunCheckupView = {
           <!-- Dynamic Question Display Box -->
           <div id="hub-q-box" style="background: var(--bg-base); padding: 22px; border-radius: var(--radius-md); border-left: 4px solid var(--accent-cyan); margin-bottom: 20px;">
             <div style="text-align: center; color: var(--text-muted); font-size: 14px;">
-              <span class="pulse-indicator"></span> Generating question from Excel & AI...
+              <span class="pulse-indicator"></span> Generating question...
             </div>
           </div>
 
@@ -1016,7 +1056,7 @@ const FunCheckupView = {
                 <span style="font-size: 18px;">🤖</span>
                 <strong style="font-size: 13.5px; color: var(--accent-cyan);">AI Study Coach Observation:</strong>
               </div>
-              <span class="badge badge-low" style="font-size: 10.5px;">Live Evaluated & Logged to Excel</span>
+              <span class="badge badge-low" style="font-size: 10.5px;">Live Evaluated</span>
             </div>
             <div id="hub-reaction-text" class="ai-reaction-text"></div>
           </div>
@@ -1177,7 +1217,7 @@ const FunCheckupView = {
       if (historyList) historyList.innerHTML = this.renderHistoryItemsHtml();
 
       playAudioChime('success');
-      showToast('✨ Answer Logged to Excel Sheet! (+10 XP)', 'success');
+      showToast('✨ Answer Evaluated by AI Coach! (+10 XP)', 'success');
     } catch (e) {
       showToast('Could not evaluate answer: ' + e.message, 'error');
     } finally {
@@ -1186,177 +1226,6 @@ const FunCheckupView = {
         submitBtn.innerHTML = 'Submit Answer ✨';
       }
     }
-  },
-
-  // =========================================================================
-  // TAB 3: LIVE EXCEL SHEET VIEWER & LOG (fun_questions.xlsx)
-  // =========================================================================
-  async renderExcelSheetView(container) {
-    container.innerHTML = `
-      <div style="max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; animation: authFadeIn 0.3s ease;">
-        
-        <!-- Excel Control Header Card -->
-        <div class="card" style="border-top: 4px solid #10b981; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span style="font-size: 22px;">📊</span>
-                <h3 style="font-size: 20px; font-weight: 800; color: var(--text-primary);">
-                  fun_questions.xlsx — Live Excel Integration
-                </h3>
-              </div>
-              <p style="font-size: 13px; color: var(--text-secondary);">
-                All 15 questions, AI question pools, and student answers are synchronized in real-time.
-              </p>
-            </div>
-
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" onclick="FunCheckupView.refreshExcelData()">
-                🔄 Refresh Sheet
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="FunCheckupView.downloadExcel()" style="background: linear-gradient(135deg, #059669, #10b981);">
-                📥 Download Excel File (.xlsx)
-              </button>
-            </div>
-          </div>
-
-          <!-- Sheet Selector Tabs -->
-          <div style="display: flex; gap: 8px; margin-top: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; flex-wrap: wrap;">
-            <button class="btn btn-sm ${this.excelActiveSheet === 'User Answers Log' ? 'btn-primary' : 'btn-secondary'}" onclick="FunCheckupView.switchExcelSheet('User Answers Log')">
-              📝 Live User Answers Log <span id="badge-answers-count" class="badge badge-demo" style="margin-left: 6px; font-size: 10.5px;">...</span>
-            </button>
-            <button class="btn btn-sm ${this.excelActiveSheet === 'Fun Check-Up Questions' ? 'btn-primary' : 'btn-secondary'}" onclick="FunCheckupView.switchExcelSheet('Fun Check-Up Questions')">
-              📋 Fun Check-Up Questions (15 Qs)
-            </button>
-            <button class="btn btn-sm ${this.excelActiveSheet === 'AI Random Questions Pool' ? 'btn-primary' : 'btn-secondary'}" onclick="FunCheckupView.switchExcelSheet('AI Random Questions Pool')">
-              🎲 AI Random Questions Pool (12 Qs)
-            </button>
-          </div>
-
-          <!-- Search Filter -->
-          <div style="margin-top: 16px;">
-            <input 
-              type="text" 
-              id="excel-search-input" 
-              class="input" 
-              placeholder="🔍 Search questions, student answers, or student names in this sheet..." 
-              value="${this.escapeHtml(this.excelSearchQuery)}"
-              oninput="FunCheckupView.onExcelSearch(this.value)"
-            />
-          </div>
-        </div>
-
-        <!-- Excel Table Grid Container -->
-        <div class="card" style="padding: 0; overflow: hidden;">
-          <div id="excel-table-container" style="overflow-x: auto; max-height: 600px;">
-            <div style="text-align: center; padding: 50px;"><div class="pulse-indicator"></div> Loading spreadsheet records...</div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    this.loadExcelData();
-  },
-
-  async loadExcelData() {
-    try {
-      const res = await api.get('/fun-checkup/excel-data');
-      this.excelData = res.data;
-
-      const badge = document.getElementById('badge-answers-count');
-      if (badge && res.data.user_answers_log) {
-        badge.innerText = `${res.data.user_answers_log.length} records`;
-      }
-
-      this.renderExcelTable();
-    } catch (e) {
-      const tableBox = document.getElementById('excel-table-container');
-      if (tableBox) {
-        tableBox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--accent-rose);">Could not load Excel data: ${e.message}</div>`;
-      }
-    }
-  },
-
-  async refreshExcelData() {
-    showToast('Refreshing Excel spreadsheet data...', 'info');
-    await this.loadExcelData();
-    showToast('Excel sheet updated successfully!', 'success');
-  },
-
-  switchExcelSheet(sheetName) {
-    this.excelActiveSheet = sheetName;
-    this.renderExcelSheetView(document.getElementById('fun-checkup-main'));
-  },
-
-  onExcelSearch(query) {
-    this.excelSearchQuery = query.toLowerCase();
-    this.renderExcelTable();
-  },
-
-  renderExcelTable() {
-    const tableBox = document.getElementById('excel-table-container');
-    if (!tableBox || !this.excelData) return;
-
-    let rows = [];
-    if (this.excelActiveSheet === 'User Answers Log') {
-      rows = this.excelData.user_answers_log || [];
-    } else if (this.excelActiveSheet === 'Fun Check-Up Questions') {
-      rows = this.excelData.checkup_questions || [];
-    } else if (this.excelActiveSheet === 'AI Random Questions Pool') {
-      rows = this.excelData.ai_random_pool || [];
-    }
-
-    if (this.excelSearchQuery) {
-      rows = rows.filter(r => JSON.stringify(r).toLowerCase().includes(this.excelSearchQuery));
-    }
-
-    if (rows.length === 0) {
-      tableBox.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 13.5px;">
-          No rows found matching your search.
-        </div>
-      `;
-      return;
-    }
-
-    const headers = Object.keys(rows[0]);
-
-    tableBox.innerHTML = `
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
-        <thead>
-          <tr style="background: var(--bg-surface-elevated); border-bottom: 2px solid var(--border-subtle);">
-            ${headers.map(h => `
-              <th style="padding: 12px 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
-                ${this.escapeHtml(h)}
-              </th>
-            `).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((row, idx) => `
-            <tr style="border-bottom: 1px solid var(--border-subtle); background: ${idx % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.015)'}; transition: background 0.15s ease;">
-              ${headers.map(h => {
-                const val = row[h] !== undefined && row[h] !== null ? String(row[h]) : '—';
-                let style = 'padding: 12px 16px; color: var(--text-secondary);';
-                
-                if (h === 'Student Name') style += ' font-weight: 700; color: var(--accent-cyan); white-space: nowrap;';
-                if (h === 'Student Answer') style += ' font-weight: 600; color: #ffffff;';
-                if (h === 'AI Coach Reaction') style += ' font-style: italic; color: #93c5fd;';
-                if (h === 'Type') style += ' white-space: nowrap;';
-                if (h === 'Question') style += ' font-weight: 600; color: var(--text-primary); max-width: 320px;';
-
-                return `<td style="${style}">${this.escapeHtml(val)}</td>`;
-              }).join('')}
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  },
-
-  downloadExcel() {
-    const token = localStorage.getItem('token');
-    window.location.href = `/api/fun-checkup/download-excel?token=${encodeURIComponent(token)}`;
   },
 
   // =========================================================================
@@ -1377,7 +1246,7 @@ const FunCheckupView = {
     if (box) {
       box.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px;">
-          <div class="pulse-indicator"></div> Loading question from Excel & AI...
+          <div class="pulse-indicator"></div> Loading question...
         </div>
       `;
     }
@@ -1432,161 +1301,13 @@ const FunCheckupView = {
       if (reactionText) reactionText.innerText = res.reaction || "😂 That is legendary!";
       if (reactionEl) reactionEl.style.display = 'block';
       playAudioChime('success');
-      showToast('Answer evaluated & saved to Excel sheet! 📊', 'success');
+      showToast('Answer evaluated! ✨', 'success');
     } catch (e) {
       showToast('Could not get reaction: ' + e.message, 'error');
     } finally {
       if (btn) {
         btn.disabled = false;
         btn.innerText = 'Send ✨';
-      }
-    }
-  },
-
-  // =========================================================================
-  // MODAL OVERLAY (Safe state-backed implementation)
-  // =========================================================================
-  async openRandomQuestionModal() {
-    const existing = document.getElementById('modal-random-q');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'modal-random-q';
-    modal.innerHTML = `
-      <div class="modal-content" style="max-width: 520px; animation: authFadeIn 0.25s ease;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 20px;" id="modal-q-emoji">🎲</span>
-            <h3 style="font-size: 18px; font-weight: 700;">Random Fun Question</h3>
-          </div>
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-random-q').remove()">✕</button>
-        </div>
-
-        <div id="modal-q-box" style="background: var(--bg-base); padding: 18px; border-radius: var(--radius-md); margin-bottom: 18px; border-left: 3px solid var(--accent-purple);">
-          <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13.5px;">
-            <div class="pulse-indicator"></div> Generating question from Excel & AI...
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 16px;">
-          <label class="form-label">Your Answer</label>
-          <input 
-            type="text" 
-            id="modal-q-answer" 
-            class="input" 
-            placeholder="Type your answer..." 
-            onkeydown="if(event.key==='Enter') FunCheckupView.submitModalAnswer()" 
-          />
-        </div>
-
-        <div id="modal-q-reaction" style="display: none;" class="ai-reaction-bubble">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-            <span>🤖</span>
-            <strong style="font-size: 13px; color: var(--accent-cyan);">AI Study Coach:</strong>
-          </div>
-          <div id="modal-reaction-text" class="ai-reaction-text"></div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px;">
-          <button class="btn btn-secondary btn-sm" id="btn-modal-roll" onclick="FunCheckupView.rollModalQuestion()">
-            🎲 Roll Another
-          </button>
-          <button class="btn btn-primary" id="btn-modal-submit" onclick="FunCheckupView.submitModalAnswer()">
-            Submit Answer ✨
-          </button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    this.rollModalQuestion();
-  },
-
-  async rollModalQuestion() {
-    const box = document.getElementById('modal-q-box');
-    const emojiEl = document.getElementById('modal-q-emoji');
-    const input = document.getElementById('modal-q-answer');
-    const reactionEl = document.getElementById('modal-q-reaction');
-    const rollBtn = document.getElementById('btn-modal-roll');
-
-    if (rollBtn) rollBtn.disabled = true;
-    if (reactionEl) reactionEl.style.display = 'none';
-    if (input) {
-      input.value = '';
-      input.focus();
-    }
-
-    if (box) {
-      box.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13.5px;">
-          <div class="pulse-indicator"></div> Generating dynamic question...
-        </div>
-      `;
-    }
-
-    try {
-      const res = await api.get('/fun-checkup/random-question');
-      this.modalRandomQ = res.question;
-
-      if (emojiEl) emojiEl.innerText = res.question.emoji || '🎲';
-      if (box) {
-        box.innerHTML = `
-          <strong style="font-size: 15px; color: var(--text-primary); display: block; line-height: 1.4;">
-            "${this.escapeHtml(res.question.question)}"
-          </strong>
-        `;
-      }
-      if (input && res.question.placeholder) {
-        input.placeholder = res.question.placeholder;
-      }
-    } catch (e) {
-      if (box) box.innerHTML = `<div style="color: var(--accent-rose);">Could not load question.</div>`;
-    } finally {
-      if (rollBtn) rollBtn.disabled = false;
-    }
-  },
-
-  async submitModalAnswer() {
-    if (!this.modalRandomQ || !this.modalRandomQ.question) {
-      showToast('Please wait for question to load', 'info');
-      return;
-    }
-
-    const input = document.getElementById('modal-q-answer');
-    const ans = input ? input.value.trim() : '';
-
-    if (!ans) {
-      showToast('Type an answer or roll another question!', 'info');
-      if (input) input.focus();
-      return;
-    }
-
-    const btn = document.getElementById('btn-modal-submit');
-    const reactionEl = document.getElementById('modal-q-reaction');
-    const reactionText = document.getElementById('modal-reaction-text');
-
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = 'Evaluating... ⚡';
-    }
-
-    try {
-      const res = await api.post('/fun-checkup/react', {
-        question: this.modalRandomQ.question,
-        answer: ans
-      });
-
-      if (reactionText) reactionText.innerText = res.reaction || "😂 That's legendary!";
-      if (reactionEl) reactionEl.style.display = 'block';
-      playAudioChime('success');
-      showToast('Answer recorded in fun_questions.xlsx! 📊', 'success');
-    } catch (e) {
-      showToast('Could not get reaction: ' + e.message, 'error');
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerText = 'Submit Answer ✨';
       }
     }
   },

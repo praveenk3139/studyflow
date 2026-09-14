@@ -26,9 +26,12 @@ function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare('SELECT id, username, email, role FROM users WHERE id = ?').get(decoded.id);
+    const user = db.prepare('SELECT id, username, email, role, is_blocked FROM users WHERE id = ?').get(decoded.id);
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized: User account no longer exists' });
+    }
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Forbidden: Your account has been blocked by Administrator.' });
     }
     req.user = user;
     next();
@@ -44,16 +47,16 @@ function optionalAuth(req, res, next) {
     const token = authHeader.split(' ')[1];
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = db.prepare('SELECT id, username, email, role FROM users WHERE id = ?').get(decoded.id);
-      if (user) req.user = user;
+      const user = db.prepare('SELECT id, username, email, role, is_blocked FROM users WHERE id = ?').get(decoded.id);
+      if (user && !user.is_blocked) req.user = user;
     } catch (e) {
       // ignore
     }
   }
   // Default to demo user if no token
   if (!req.user) {
-    const demoUser = db.prepare('SELECT id, username, email, role FROM users WHERE username = ?').get('alex.student');
-    if (demoUser) req.user = demoUser;
+    const demoUser = db.prepare('SELECT id, username, email, role, is_blocked FROM users WHERE username = ?').get('alex.student');
+    if (demoUser && !demoUser.is_blocked) req.user = demoUser;
   }
   next();
 }
